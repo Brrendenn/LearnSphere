@@ -1,0 +1,16 @@
+type Quest = 
+ record {
+   description: text;
+   id: nat;
+   link: text;
+   rewardAmount: nat;
+   title: text;
+ };
+service : {
+  completeQuest: (questId: nat) -> (text);
+  getAllQuests: () -> (vec Quest) query;
+  getNextQuest: () -> (opt Quest) query;
+  getQuestById: (questId: nat) -> (opt Quest) query;
+  getQuestCount: () -> (nat) query;
+  greet: (name: text) -> (text) query;
+}
