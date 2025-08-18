@@ -1,150 +1,292 @@
-from uagents import Agent, Context
+from datetime import datetime
+from uuid import uuid4
+from openai import OpenAI
+from uagents import Context, Protocol, Agent
+from uagents_core.contrib.protocols.chat import (
+    ChatAcknowledgement,
+    ChatMessage,
+    EndSessionContent,
+    TextContent,
+    chat_protocol_spec,
+)
+from uagents.setup import fund_agent_if_low
 import subprocess
 import re
 import asyncio
+import os
+
+# Agent configuration
+AGENT_NAME = "learnsphere_agent"
+AGENT_SEED = "learnsphereagentisthegoat"
+AGENT_MAILBOX_KEY = os.getenv("AGENT_MAILBOX_KEY")
+
+# ASI:One LLM configuration
+client = OpenAI(
+    # Using the ASI:One LLM endpoint and model
+    base_url='https://api.asi1.ai/v1',
+    # You need to get an ASI:One API key from https://asi1.ai/dashboard/api-keys
+    api_key=os.getenv("ASI_ONE_API_KEY", "<YOUR_API_KEY>"),
+)
 
 # Get the correct canister ID dynamically
-def get_canister_id():
+def get_canister_id(network="local"):
+    """Dynamically get the canister ID."""
+    canister_name = "learnsphere"
     try:
-        # Try to get canister ID from dfx
-        result = subprocess.run([
-            "dfx", "canister", "id", "learnsphere", "--network", "local"
-        ], capture_output=True, text=True, timeout=5)
-        
-        if result.returncode == 0:
-            canister_id = result.stdout.strip()
-            print(f"Found canister ID: {canister_id}")
-            return canister_id
-        else:
-            print("Could not get canister ID automatically, using hardcoded value")
-            return "uxrrr-q7777-77774-qaaaq-cai"
-    except:
-        print("Using hardcoded canister ID")
-        return "uxrrr-q7777-77774-qaaaq-cai"
+        cmd = ["dfx", "canister", "id", canister_name]
+        if network != "local":
+            cmd.extend(["--network", network])
+            
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=10)
+        canister_id = result.stdout.strip()
+        print(f"✅ Found canister ID '{canister_id}' for network '{network}'.")
+        return canister_id
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"⚠️ Could not get canister ID automatically for network '{network}': {e}")
+        fallback_id = "br5f7-7uaaa-aaaaa-qaaca-cai" 
+        print(f"Falling back to hardcoded local ID: {fallback_id}")
+        return fallback_id
 
 CANISTER_ID = get_canister_id()
 
-# Simple function to call any canister method
-async def call_canister(method_name, args="()"):
+# Create the agent with mailbox enabled for chat
+agent = Agent(
+    name=AGENT_NAME,
+    seed=AGENT_SEED,
+    port=8001,
+    mailbox=True,
+    publish_agent_details=True,
+)
+
+# Fund the agent with FET tokens if its balance is low
+fund_agent_if_low(agent.wallet.address())
+
+# === CANISTER INTERACTION FUNCTIONS ===
+
+async def call_canister(method_name: str, args: str = "()"):
+    """Calls a method on the Motoko canister."""
     try:
-        cmd = [
-            "dfx", "canister", "call", 
-            CANISTER_ID, 
-            method_name, 
-            args,
-            "--network", "local"
-        ]
+        cmd = ["dfx", "canister", "call", CANISTER_ID, method_name, args]
+        print(f"💻 Calling: {' '.join(cmd)}")
         
-        print(f"Calling: dfx canister call {CANISTER_ID} {method_name} {args} --network local")
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        
-        if result.returncode == 0:
-            output = result.stdout.strip()
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=15)
+
+        if process.returncode == 0:
+            output = stdout.decode().strip()
             print(f"✅ {method_name} success: {output}")
             return {"success": True, "output": output}
         else:
-            error = result.stderr.strip()
+            error = stderr.decode().strip()
             print(f"❌ {method_name} failed: {error}")
             return {"success": False, "error": error}
             
+    except asyncio.TimeoutError:
+        print(f"❌ Timeout calling {method_name}")
+        return {"success": False, "error": "Request timed out"}
     except Exception as e:
         print(f"❌ Exception calling {method_name}: {e}")
         return {"success": False, "error": str(e)}
 
-# Parse quest from Motoko output
-def parse_quest(output):
+def parse_quest(output: str):
+    """Parses quest data from Motoko's string output."""
+    if "null" in output:
+        return None
     try:
-        # Handle "opt record { ... }" format
-        if "opt record" in output:
-            # Extract fields using regex
-            quest = {}
-            
-            # Extract id
-            id_match = re.search(r'id\s*=\s*(\d+)', output)
-            if id_match:
-                quest['id'] = int(id_match.group(1))
-            
-            # Extract title
-            title_match = re.search(r'title\s*=\s*"([^"]*)"', output)
-            if title_match:
-                quest['title'] = title_match.group(1)
-            
-            # Extract description
-            desc_match = re.search(r'description\s*=\s*"([^"]*)"', output)
-            if desc_match:
-                quest['description'] = desc_match.group(1)
-            
-            return quest if quest else None
-            
-        elif "null" in output:
-            return None
-        else:
-            return {"raw": output}
-            
+        quest = {}
+        id_match = re.search(r'id\s*=\s*(\d+)', output)
+        if id_match: quest['id'] = int(id_match.group(1))
+        
+        title_match = re.search(r'title\s*=\s*"([^"]*)"', output)
+        if title_match: quest['title'] = title_match.group(1)
+        
+        desc_match = re.search(r'description\s*=\s*"([^"]*)"', output)
+        if desc_match: quest['description'] = desc_match.group(1)
+        
+        link_match = re.search(r'link\s*=\s*"([^"]*)"', output)
+        if link_match: quest['link'] = link_match.group(1)
+        
+        reward_match = re.search(r'rewardAmount\s*=\s*(\d+)', output)
+        if reward_match: quest['rewardAmount'] = int(reward_match.group(1))
+        
+        prereq_match = re.search(r'prerequisite\s*=\s*(\?(\d+)|null)', output)
+        if prereq_match:
+            if prereq_match.group(1) == 'null':
+                quest['prerequisite'] = None
+            else:
+                quest['prerequisite'] = int(prereq_match.group(2))
+        
+        return quest if quest else {"raw": output}
     except Exception as e:
         print(f"Error parsing quest: {e}")
         return {"error": str(e), "raw": output}
 
-# Test basic connectivity
-async def test_connection():
-    print("Testing basic connectivity...")
-    
-    # Test 1: Simple greet function
-    result = await call_canister("greet", '("Agent")')
-    if result["success"]:
-        print("✅ Basic canister call works!")
-        return True
-    else:
-        print("❌ Basic canister call failed!")
-        return False
-
-# Define the Fetch.ai Agent
-quest_agent = Agent(name="quest_giver", seed="a_very_secret_seed_phrase")
-
-@quest_agent.on_interval(period=30.0)
-async def check_for_quests(ctx: Context):
-    ctx.logger.info("🔍 Agent checking for quests...")
-    
-    # Test connection first
-    if not await test_connection():
-        ctx.logger.error("❌ Cannot connect to canister!")
-        return
-    
-    # Try to get quest count first
-    count_result = await call_canister("getQuestCount", "()")
-    if count_result["success"]:
-        ctx.logger.info(f"📊 Found {count_result['output']} quests in canister")
-    
-    # Get next quest
-    quest_result = await call_canister("getNextQuest", "()")
-    
-    if quest_result["success"]:
-        quest = parse_quest(quest_result["output"])
-        
-        if quest and "error" not in quest:
-            if "raw" in quest:
-                ctx.logger.info(f"🎯 Got quest data: {quest['raw']}")
-            else:
-                title = quest.get('title', 'Unknown')
-                description = quest.get('description', 'No description')
-                ctx.logger.info(f"🎯 NEXT QUEST: {title}")
-                ctx.logger.info(f"📝 {description}")
+async def get_quest_context():
+    """Get current quest information for AI context."""
+    result = await call_canister("getNextQuest")
+    if result.get("success"):
+        quest_data = parse_quest(result["output"])
+        if quest_data and "title" in quest_data:
+            return f"""Current available quest:
+- Title: {quest_data['title']}
+- Description: {quest_data['description']}
+- Reward: {quest_data.get('rewardAmount', 'Unknown')} tokens
+- Link: {quest_data.get('link', 'No link provided')}
+- Prerequisite: {quest_data.get('prerequisite', 'None')}"""
         else:
-            ctx.logger.info("📭 No quests available")
+            return "No quests available at the moment."
     else:
-        ctx.logger.error(f"❌ Failed to get quest: {quest_result.get('error', 'Unknown error')}")
+        return "Unable to retrieve quest information."
 
-@quest_agent.on_event("startup")
-async def startup(ctx: Context):
-    ctx.logger.info("🚀 LearnSphere Agent starting...")
-    ctx.logger.info(f"🏷️  Using canister ID: {CANISTER_ID}")
+async def get_all_quests_context():
+    """Get all quests for comprehensive context."""
+    result = await call_canister("getAllQuests")
+    if result.get("success"):
+        return f"All available quests in LearnSphere: {result['output']}"
+    else:
+        return "Unable to retrieve all quests information."
+
+# === CHAT PROTOCOL SETUP ===
+
+# Create a new protocol which is compatible with the chat protocol spec
+protocol = Protocol(spec=chat_protocol_spec)
+
+# Define the handler for chat messages sent to your agent
+@protocol.on_message(ChatMessage)
+async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
+    ctx.logger.info(f"💬 Received chat message from {sender}")
     
-    # Wait a moment then test
-    await asyncio.sleep(1)
-    await check_for_quests(ctx)
+    # Send acknowledgement for receiving the message
+    await ctx.send(
+        sender,
+        ChatAcknowledgement(
+            timestamp=datetime.now(),
+            acknowledged_msg_id=msg.msg_id
+        ),
+    )
+
+    # Collect all the text chunks from the message
+    text = ''
+    for item in msg.content:
+        if isinstance(item, TextContent):
+            text += item.text
+
+    ctx.logger.info(f"📝 User message: {text}")
+
+    # Get current quest context for the AI
+    quest_context = await get_quest_context()
+    all_quests_context = await get_all_quests_context()
+
+    # Query the ASI:One model with LearnSphere context
+    response = 'I am afraid something went wrong and I am unable to answer your question at the moment'
+    try:
+        r = client.chat.completions.create(
+            model="asi1-mini",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": f"""
+You are the LearnSphere Quest Assistant, an expert in blockchain learning, Internet Computer Protocol (ICP), and Fetch.ai. 
+
+Your role is to help users with:
+- Understanding blockchain concepts and technologies
+- Guiding them through LearnSphere learning quests
+- Explaining ICP smart contracts and canisters
+- Teaching about Fetch.ai agents and autonomous systems
+- Providing educational support for Web3 development
+
+Current Quest Status:
+{quest_context}
+
+Available Quests Overview:
+{all_quests_context}
+
+Guidelines:
+- Be encouraging and educational
+- Provide clear explanations for complex concepts
+- Suggest relevant quests when appropriate
+- Help users understand the learning path
+- If asked about quest completion, explain they need to read the provided links and use the canister functions
+- Always be helpful and motivating about their learning journey
+
+If users ask about topics outside of blockchain, Web3, ICP, Fetch.ai, or learning - politely redirect them back to educational content.
+"""
+                },
+                {"role": "user", "content": text},
+            ],
+            max_tokens=2048,
+        )
+        response = str(r.choices[0].message.content)
+        ctx.logger.info(f"🤖 AI response generated successfully")
+    except Exception as e:
+        ctx.logger.exception(f'Error querying ASI:One model: {e}')
+        response = "I'm having trouble connecting to my AI assistant right now. Please try asking about LearnSphere quests again in a moment!"
+
+    # Send the response back to the user
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.utcnow(),
+        msg_id=uuid4(),
+        content=[
+            # Send the AI response back
+            TextContent(type="text", text=response),
+            # Signal that the session is over (no message history stored)
+            EndSessionContent(type="end-session"),
+        ]
+    ))
+
+@protocol.on_message(ChatAcknowledgement)
+async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
+    # Log acknowledgements but don't need to act on them
+    ctx.logger.info(f"✅ Message acknowledged by {sender}")
+
+# === PERIODIC QUEST MONITORING ===
+
+@agent.on_interval(period=300.0)  # Every 5 minutes
+async def quest_status_check(ctx: Context):
+    """Periodically check and log quest status"""
+    ctx.logger.info("🔍 Performing periodic quest check...")
+    
+    result = await call_canister("getNextQuest")
+    if result.get("success"):
+        quest_data = parse_quest(result["output"])
+        if quest_data and "title" in quest_data:
+            ctx.logger.info(f"✨ Current Quest Available: {quest_data['title']}")
+            ctx.logger.info(f"   Reward: {quest_data.get('rewardAmount', 'Unknown')} tokens")
+        else:
+            ctx.logger.info("📭 No new quests at the moment.")
+    else:
+        ctx.logger.error(f"Failed to query for quests: {result.get('error')}")
+
+# === STARTUP ===
+
+@agent.on_event("startup")
+async def startup(ctx: Context):
+    """Runs when the agent starts."""
+    ctx.logger.info(f"🚀 LearnSphere Quest Agent with ASI:One Chat starting...")
+    ctx.logger.info(f"   Agent Name: {agent.name}")
+    ctx.logger.info(f"   Agent Address: {agent.address}")
+    ctx.logger.info(f"   🤖 ASI:One Chat Protocol: Enabled")
+    ctx.logger.info(f"   🎯 Target Canister ID: {CANISTER_ID}")
+    ctx.logger.info(f"   💬 Chat Protocol: Ready for messages")
+    
+    # Wait a bit before first operations
+    await asyncio.sleep(3.0)
+    
+    # Perform initial quest check
+    await quest_status_check(ctx)
+
+# Attach the chat protocol to the agent
+agent.include(protocol, publish_manifest=True)
 
 if __name__ == "__main__":
-    print("🚀 Starting LearnSphere Quest Agent...")
-    print(f"📍 Canister ID: {CANISTER_ID}")
-    quest_agent.run()
+    print("🚀 Starting LearnSphere Quest Agent with ASI:One Chat...")
+    print(f"   🤖 ASI:One LLM: Enabled")
+    print(f"   💬 Chat Protocol: Active")
+    print(f"   🎯 Quest Management: Enabled")
+    print(f"   📡 Agentverse: Publishing agent details")
+    print(f"   🔑 API Key Status: {'✅ Set' if os.getenv('ASI_ONE_API_KEY') else '❌ Missing'}")
+    agent.run()
