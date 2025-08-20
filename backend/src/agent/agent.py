@@ -185,11 +185,11 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     response = 'I am afraid something went wrong and I am unable to answer your question at the moment'
     try:
         r = client.chat.completions.create(
-            model="asi1-mini",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": f"""
+    model="asi1-mini",
+    messages=[
+        {
+            "role": "system", 
+            "content": f"""
 You are the LearnSphere Quest Assistant, an expert in blockchain learning, Internet Computer Protocol (ICP), and Fetch.ai. 
 
 Your role is to help users with:
@@ -206,20 +206,30 @@ Available Quests Overview:
 {all_quests_context}
 
 Guidelines:
-- Be encouraging and educational
-- Provide clear explanations for complex concepts
-- Suggest relevant quests when appropriate
-- Help users understand the learning path
-- If asked about quest completion, explain they need to read the provided links and use the canister functions
-- Always be helpful and motivating about their learning journey
+- Be encouraging and educational.
+- Provide clear explanations for complex concepts.
+- Suggest relevant quests when appropriate.
+- Help users understand the learning path.
+- If asked about quest completion, explain they need to read the provided links and use the canister functions.
+- Always be helpful and motivating about their learning journey.
+
+---
+**NEW TASK: Learning Path Generation**
+If a user asks "how do I learn about X?" or requests a learning path, you MUST provide a structured, step-by-step learning plan.
+- Start with a brief introduction to the topic.
+- List 3-5 clear, actionable steps (e.g., "1. Understand the Basics", "2. Practical Application", "3. Advanced Concepts").
+- For each step, provide a short explanation and suggest what the user should focus on.
+- If any existing quests from the "Available Quests Overview" are relevant to a step, mention them.
+- End with an encouraging closing remark.
+---
 
 If users ask about topics outside of blockchain, Web3, ICP, Fetch.ai, or learning - politely redirect them back to educational content.
 """
-                },
-                {"role": "user", "content": text},
-            ],
-            max_tokens=2048,
-        )
+        },
+        {"role": "user", "content": text},
+    ],
+    max_tokens=2048,
+)
         response = str(r.choices[0].message.content)
         ctx.logger.info(f"🤖 AI response generated successfully")
     except Exception as e:
