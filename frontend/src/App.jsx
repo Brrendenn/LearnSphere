@@ -22,6 +22,7 @@ import UserStats from "./components/UserStats";
 import QuestGrid from "./components/QuestGrid";
 import QuestModal from "./components/QuestModal";
 import StarField from "./components/StarField";
+import ChatAssistant from "./components/ChatAssistant";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -315,6 +316,7 @@ function App() {
           isCompleting={isCompleting}
         />
       </div>
+      <ChatAssistant />
     </div>
   );
 }

@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cosmjs/crypto": "^0.36.0",
+    "@cosmjs/proto-signing": "^0.36.0",
     "@dfinity/agent": "latest",
     "@dfinity/auth-client": "latest",
     "@dfinity/candid": "latest",
