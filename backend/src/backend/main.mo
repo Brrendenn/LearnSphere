@@ -27,12 +27,19 @@ persistent actor LearnSphere {
 
     // Store all available quests - explicitly stable to avoid transient warnings
     private stable var questsArray : [Quest] = [
+        // --- Existing Quests ---
         { id = 1; title = "What is a Canister?"; description = "Read the introductory article on ICP smart contracts."; link = "https://internetcomputer.org/docs/current/concepts/canisters"; rewardAmount = 100; prerequisite = null; },
         { id = 2; title = "Introduction to Fetch.ai"; description = "Watch the official intro video to uAgents."; link = "https://fetch.ai/getting-started/"; rewardAmount = 100; prerequisite = null; },
         { id = 3; title = "Building Your First dApp"; description = "Follow the developer journey tutorials."; link = "https://internetcomputer.org/docs/current/developer-docs/getting-started/developer-journey"; rewardAmount = 150; prerequisite = ?1; },
         { id = 4; title = "Agent Framework Concepts"; description = "Learn how Fetch.ai agents work."; link = "https://docs.fetch.ai/concepts/agent-framework/"; rewardAmount = 150; prerequisite = ?2; },
         { id = 5; title = "Understanding Principals"; description = "Learn about identity on the IC."; link = "https://internetcomputer.org/docs/current/concepts/principals-and-identity"; rewardAmount = 200; prerequisite = ?3; },
-        { id = 6; title = "Agent-Based DeFi"; description = "Explore how agents are used in finance."; link = "https://docs.fetch.ai/concepts/agent-based-finance/"; rewardAmount = 250; prerequisite = ?4; }
+        { id = 6; title = "Agent-Based DeFi"; description = "Explore how agents are used in finance."; link = "https://docs.fetch.ai/concepts/agent-based-finance/"; rewardAmount = 250; prerequisite = ?4; },
+        { id = 7; title = "What is Web3?"; description = "Get a high-level overview of the next evolution of the internet."; link = "https://www.web3.university/"; rewardAmount = 100; prerequisite = null; },
+        { id = 8; title = "Crypto Fundamentals"; description = "Learn the basics of what cryptocurrency is and how it works."; link = "https://www.nerdwallet.com/article/investing/cryptocurrency"; rewardAmount = 120; prerequisite = ?7; },
+        { id = 9; title = "Proof-of-Work vs. Proof-of-Stake"; description = "Understand the two major consensus mechanisms that power blockchains."; link = "https://www.mckinsey.com/featured-insights/mckinsey-explainers/what-is-proof-of-stake"; rewardAmount = 150; prerequisite = ?8; },
+        { id = 10; title = "Introduction to DeFi"; description = "Discover how decentralized finance is changing the world of financial services."; link = "https://www.investopedia.com/decentralized-finance-defi-5113835"; rewardAmount = 150; prerequisite = ?8; },
+        { id = 11; title = "What are NFTs?"; description = "Learn about Non-Fungible Tokens and their role in digital ownership."; link = "https://www.iberdrola.com/innovation/nft-token-non-fungible"; rewardAmount = 130; prerequisite = ?8; },
+        { id = 12; title = "The Motoko Playground"; description = "Get hands-on! Write and deploy your first canister directly in the browser."; link = "https://m7sm4-2iaaa-aaaab-qabra-cai.raw.ic0.app/"; rewardAmount = 300; prerequisite = ?5; }
     ];
 
     // Store user data - use stable for persistence across upgrades
