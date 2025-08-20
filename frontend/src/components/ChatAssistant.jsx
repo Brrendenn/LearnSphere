@@ -1,7 +1,7 @@
 // src/components/ChatAssistant.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Bip39, Random } from "@cosmjs/crypto";
-import { DirectSecp256k1HdWallet}  from "@cosmjs/proto-signing";
+import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 
 // Your LearnSphere agent's address from the terminal when you run it
 const AGENT_ADDRESS =
@@ -16,6 +16,7 @@ const ChatAssistant = () => {
   const [userWallet, setUserWallet] = useState(null);
   const [userAddress, setUserAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false); // <-- NEW: State to control visibility
   const messagesEndRef = useRef(null);
 
   // Effect to create a temporary wallet for the user session
@@ -170,47 +171,93 @@ const ChatAssistant = () => {
   };
 
   return (
-    <div className="fixed bottom-5 left-5 z-50 flex flex-col w-[400px] h-[600px] border border-white/20 rounded-2xl shadow-2xl bg-slate-900/50 backdrop-blur-md text-white overflow-hidden">
-      {/* Message Area */}
-      <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`max-w-[80%] p-3 rounded-lg ${
-              msg.sender === "user"
-                ? "self-end bg-blue-600"
-                : "self-start bg-slate-700"
-            }`}
-          >
-            {msg.text}
+    <>
+      {/* Conditionally render the chat window */}
+      {isOpen && (
+        <div className="fixed bottom-24 left-5 z-50 flex flex-col w-[400px] h-[600px] border border-white/20 rounded-2xl shadow-2xl bg-slate-900/50 backdrop-blur-md text-white overflow-hidden transition-all duration-300 ease-in-out transform opacity-100 translate-y-0">
+          {/* Message Area */}
+          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`max-w-[80%] p-3 rounded-lg ${
+                  msg.sender === "user"
+                    ? "self-end bg-blue-600"
+                    : "self-start bg-slate-700"
+                }`}
+              >
+                {msg.text}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="self-start bg-slate-700 p-3 rounded-lg">...</div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
-        ))}
-        {isLoading && (
-          <div className="self-start bg-slate-700 p-3 rounded-lg">...</div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-white/20 flex items-center">
-        <input
-          type="text"
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-          placeholder="Ask about ICP, Fetch.ai, or quests..."
-          className="flex-1 px-4 py-2 rounded-full border border-slate-600 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
-          disabled={isLoading}
-        />
-        <button
-          onClick={handleSendMessage}
-          className="ml-3 px-6 py-2 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isLoading}
-        >
-          Send
-        </button>
-      </div>
-    </div>
+          {/* Input Area */}
+          <div className="p-4 border-t border-white/20 flex items-center">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+              placeholder="Ask about ICP, Fetch.ai, or quests..."
+              className="flex-1 px-4 py-2 rounded-full border border-slate-600 bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSendMessage}
+              className="ml-3 px-6 py-2 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-5 left-5 z-50 w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-700 transition-colors"
+        aria-label="Toggle Chat"
+      >
+        {isOpen ? (
+          // Close Icon (X)
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        ) : (
+          // Chat Icon
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        )}
+      </button>
+    </>
   );
 };
 
