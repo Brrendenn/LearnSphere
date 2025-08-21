@@ -177,6 +177,17 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
     ctx.logger.info(f"📝 User message: {text}")
 
+    if text.lower().strip() in ['bye', 'goodbye', 'end session', 'quit', 'exit']:
+        await ctx.send(sender, ChatMessage(
+            timestamp=datetime.utcnow(),
+            msg_id=uuid4(),
+            content=[
+                TextContent(type="text", text="Thanks for learning with LearnSphere! Feel free to come back anytime to continue your Web3 journey. Good luck with your quests! 🚀"),
+                EndSessionContent(type="end-session"),
+            ]
+        ))
+        return
+
     # Get current quest context for the AI
     quest_context = await get_quest_context()
     all_quests_context = await get_all_quests_context()
@@ -185,11 +196,11 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     response = 'I am afraid something went wrong and I am unable to answer your question at the moment'
     try:
         r = client.chat.completions.create(
-    model="asi1-mini",
-    messages=[
-        {
-            "role": "system", 
-            "content": f"""
+            model="asi1-mini",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": f"""
 You are the LearnSphere Quest Assistant, an expert in blockchain learning, Internet Computer Protocol (ICP), and Fetch.ai. 
 
 Your role is to help users with:
@@ -206,47 +217,44 @@ Available Quests Overview:
 {all_quests_context}
 
 Guidelines:
-- Be encouraging and educational.
-- Provide clear explanations for complex concepts.
-- Suggest relevant quests when appropriate.
-- Help users understand the learning path.
-- If asked about quest completion, explain they need to read the provided links and use the canister functions.
-- Always be helpful and motivating about their learning journey.
+- Be encouraging and educational
+- Provide clear, conversational explanations
+- Use simple formatting - avoid complex markdown or special characters
+- Keep responses concise but helpful (2-3 paragraphs max)
+- Suggest relevant quests when appropriate
+- If asked about quest completion, explain they need to read the provided links and use the canister functions
+- Always be helpful and motivating about their learning journey
 
----
-**NEW TASK: Learning Path Generation**
-If a user asks "how do I learn about X?" or requests a learning path, you MUST provide a structured, step-by-step learning plan.
-- Start with a brief introduction to the topic.
-- List 3-5 clear, actionable steps (e.g., "1. Understand the Basics", "2. Practical Application", "3. Advanced Concepts").
-- For each step, provide a short explanation and suggest what the user should focus on.
-- If any existing quests from the "Available Quests Overview" are relevant to a step, mention them.
-- End with an encouraging closing remark.
----
+**IMPORTANT FORMATTING RULES:**
+- Write in a natural, conversational tone
+- Use simple bullet points with - or * if needed
+- Avoid complex formatting, tables, or special characters
+- Keep it readable in a chat interface
+- No emojis in structured lists
 
 If users ask about topics outside of blockchain, Web3, ICP, Fetch.ai, or learning - politely redirect them back to educational content.
 """
-        },
-        {"role": "user", "content": text},
-    ],
-    max_tokens=2048,
-)
+                },
+                {"role": "user", "content": text},
+            ],
+            max_tokens=1024,  # Reduced for more concise responses
+        )
         response = str(r.choices[0].message.content)
         ctx.logger.info(f"🤖 AI response generated successfully")
     except Exception as e:
         ctx.logger.exception(f'Error querying ASI:One model: {e}')
         response = "I'm having trouble connecting to my AI assistant right now. Please try asking about LearnSphere quests again in a moment!"
 
-    # Send the response back to the user
+    # Send the response back to the user - REMOVED EndSessionContent!
     await ctx.send(sender, ChatMessage(
         timestamp=datetime.utcnow(),
         msg_id=uuid4(),
         content=[
-            # Send the AI response back
             TextContent(type="text", text=response),
-            # Signal that the session is over (no message history stored)
-            EndSessionContent(type="end-session"),
+            # ✅ REMOVED: EndSessionContent - this keeps the session alive
         ]
     ))
+    
 
 @protocol.on_message(ChatAcknowledgement)
 async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
