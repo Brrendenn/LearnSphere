@@ -1,0 +1,17 @@
+// Version: 1.0.0
+type Quest__541372594 =
+  {
+    category : Text;
+    description : Text;
+    id : Nat;
+    link : Text;
+    prerequisite : ?Nat;
+    rewardAmount : Nat;
+    title : Text
+  };
+type UserStats__610447770 =
+  {experience : Nat; questsCompleted : [Nat]; tokens : Nat};
+actor {
+  stable var questsArray : [Quest__541372594];
+  stable var userStatsEntries : [(Principal, UserStats__610447770)]
+};

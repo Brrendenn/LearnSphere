@@ -1,0 +1,37 @@
+{
+  "canisters": {
+    "learnsphere_backend": {
+      "main": "backend/src/backend/main.mo",
+      "type": "motoko",
+      "declarations": {
+        "output": "frontend/src/declarations"
+      }
+    },
+    "learnsphere_frontend": {
+      "dependencies": [
+        "learnsphere_backend"
+      ],
+      "type": "assets",
+      "source": [
+        "frontend/dist"
+      ],
+      "build": [
+        "npm --prefix frontend install",
+        "npm --prefix frontend run build"
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
+    }
+  },
+  "version": 1
+}

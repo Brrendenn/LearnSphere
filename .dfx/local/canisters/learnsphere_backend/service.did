@@ -1,0 +1,29 @@
+type UserStats = 
+ record {
+   experience: nat;
+   questsCompleted: vec nat;
+   tokens: nat;
+ };
+type Quest = 
+ record {
+   category: text;
+   description: text;
+   id: nat;
+   link: text;
+   prerequisite: opt nat;
+   rewardAmount: nat;
+   title: text;
+ };
+service : {
+  completeQuest: (questId: nat) -> (text);
+  getAllQuests: () -> (vec Quest) query;
+  getAllQuestsWithStatus: () -> (vec record {
+                                       Quest;
+                                       text;
+                                     });
+  getNextQuest: () -> (opt Quest);
+  getQuestById: (questId: nat) -> (opt Quest) query;
+  getQuestCount: () -> (nat) query;
+  getUserStats: () -> (UserStats);
+  greet: (name: text) -> (text) query;
+}
