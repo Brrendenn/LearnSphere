@@ -1,7 +1,10 @@
-import { Star, Trophy, Coins, BookOpen, Play, CheckCircle, Lock } from 'lucide-react'
+import { Star, Coins, BookOpen, Play, CheckCircle, Lock } from 'lucide-react'
 import QuestActionButton from './QuestActionButton';
 
 const QuestCard = ({ quest, onStartQuest}) => {
+  console.log('Quest data:', quest);
+  console.log('Quest category:', quest.category);
+  
   const getQuestIcon = (type) => {
     switch (type) {
       case "video":
@@ -26,15 +29,16 @@ const QuestCard = ({ quest, onStartQuest}) => {
 
   const getCategoryColor = (category) => {
     const colors = {
-      Basics: "from-blue-500 to-cyan-500",
-      ICP: "from-purple-500 to-pink-500",
-      "AI Agents": "from-green-500 to-teal-500",
-      DeFi: "from-yellow-500 to-orange-500",
-      Development: "from-red-500 to-pink-500",
-      Economics: "from-indigo-500 to-purple-500",
-      Advanced: "from-gray-500 to-slate-600",
+      "ICP": "from-purple-500 to-pink-500",
+      "AI Agents": "from-green-500 to-teal-500", 
+      "Development": "from-red-500 to-pink-500",
+      "DeFi": "from-yellow-500 to-orange-500",
+      "Web3": "from-blue-500 to-indigo-500",
+      "Basics": "from-blue-500 to-cyan-500",
+      "Economics": "from-indigo-500 to-purple-500",
+      "Advanced": "from-gray-500 to-slate-600",
     };
-    return colors[category] || "from-blue-500 to-cyan-500";
+    return colors[category] || "from-gray-500 to-slate-500";
   };
 
   const handleClick = () => {
@@ -42,6 +46,8 @@ const QuestCard = ({ quest, onStartQuest}) => {
       onStartQuest(quest);
     }
   };
+
+  const questCategory = quest.category || "Unknown";
 
   return (
     <div
@@ -54,21 +60,16 @@ const QuestCard = ({ quest, onStartQuest}) => {
       }`}
       onClick={handleClick}
     >
-      {/* Quest Status Badge */}
       <div className="absolute top-4 right-4">
         {getStatusIcon(quest.status)}
       </div>
 
-      {/* Category Badge */}
       <div
-        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4 bg-gradient-to-r ${getCategoryColor(
-          quest.category
-        )}`}
+        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4 text-white bg-gradient-to-r ${getCategoryColor(questCategory)}`}
       >
-        {quest.category}
+        {questCategory}
       </div>
 
-      {/* Quest Content */}
       <div className="mb-4">
         <h3 className="text-lg font-bold mb-2 text-white">{quest.title}</h3>
         <p className="text-sm opacity-75 mb-3">{quest.description}</p>
@@ -76,16 +77,15 @@ const QuestCard = ({ quest, onStartQuest}) => {
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2 opacity-75">
             {getQuestIcon(quest.type)}
-            <span>{quest.duration}</span>
+            {quest.duration && <span>{quest.duration}</span>}
           </div>
           <div className="flex items-center gap-1 text-yellow-400 font-semibold">
             <Coins className="w-4 h-4" />
-            <span>+{quest.reward}</span>
+            <span>+{quest.rewardAmount?.toString()}</span>
           </div>
         </div>
       </div>
 
-      {/* Action Button */}
       <QuestActionButton status={quest.status} />
     </div>
   );

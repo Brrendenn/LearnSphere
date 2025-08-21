@@ -81,7 +81,7 @@ function App() {
         // Create actor manually with correct canister ID
         const canisterId = "uxrrr-q7777-77774-qaaaq-cai"; // Update this with your actual canister ID
         
-        // Manual IDL factory
+        // Manual IDL factory - FIXED with category field
         const idlFactory = ({ IDL }) => {
           const Quest = IDL.Record({
             id: IDL.Nat,
@@ -90,6 +90,7 @@ function App() {
             link: IDL.Text,
             rewardAmount: IDL.Nat,
             prerequisite: IDL.Opt(IDL.Nat),
+            category: IDL.Text, // ✅ ADDED: Missing category field!
           });
           
           const UserStats = IDL.Record({
@@ -199,12 +200,16 @@ function App() {
       const questsWithStatus = await backendActor.getAllQuestsWithStatus();
       console.log("✅ Raw quests with status:", questsWithStatus);
       
-      const formattedQuests = questsWithStatus.map(([quest, status]) => ({
-        ...quest,
-        id: Number(quest.id),
-        reward: Number(quest.rewardAmount),
-        status: status,
-      }));
+      const formattedQuests = questsWithStatus.map(([quest, status]) => {
+        console.log("Processing quest:", quest); // Debug individual quest
+        return {
+          ...quest,
+          id: Number(quest.id),
+          reward: Number(quest.rewardAmount),
+          status: status,
+          // category should now be included automatically from the quest object
+        };
+      });
       
       setQuests(formattedQuests);
       console.log("📝 Formatted quests:", formattedQuests);

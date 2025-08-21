@@ -21,7 +21,6 @@ export const createActor = (canisterId, options = {}) => {
     );
   }
 
-  // Fetch root key for certificate validation during development
   if (process.env.DFX_NETWORK !== "ic") {
     agent.fetchRootKey().catch((err) => {
       console.warn(
@@ -31,7 +30,6 @@ export const createActor = (canisterId, options = {}) => {
     });
   }
 
-  // Creates an actor with using the candid interface and the HttpAgent
   return Actor.createActor(idlFactory, {
     agent,
     canisterId,

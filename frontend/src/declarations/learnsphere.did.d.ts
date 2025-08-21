@@ -9,6 +9,7 @@ export interface Quest {
   'link' : string,
   'description' : string,
   'prerequisite' : [] | [bigint],
+  'category' : string
 }
 export interface UserStats {
   'experience' : bigint,

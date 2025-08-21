@@ -6,6 +6,7 @@ export const idlFactory = ({ IDL }) => {
     'link' : IDL.Text,
     'description' : IDL.Text,
     'prerequisite' : IDL.Opt(IDL.Nat),
+    'category' : IDL.Text
   });
   const UserStats = IDL.Record({
     'experience' : IDL.Nat,

@@ -3,11 +3,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { Bip39, Random } from "@cosmjs/crypto";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 
-// Your LearnSphere agent's address from the terminal when you run it
 const AGENT_ADDRESS =
-  "agent1qghztqzczs2ge47xz7xr3vduust7zagw4zfdefpeg74e253paquf6gwr0lu"; // IMPORTANT: Replace with your agent's actual address
+  "agent1qghztqzczs2ge47xz7xr3vduust7zagw4zfdefpeg74e253paquf6gwr0lu"; 
 
-// Agentverse endpoints
 const AGENTVERSE_URL = "https://agentverse.ai/v1";
 
 const ChatAssistant = () => {
@@ -16,23 +14,19 @@ const ChatAssistant = () => {
   const [userWallet, setUserWallet] = useState(null);
   const [userAddress, setUserAddress] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // <-- NEW: State to control visibility
+  const [isOpen, setIsOpen] = useState(false); 
   const messagesEndRef = useRef(null);
 
-  // Effect to create a temporary wallet for the user session
   useEffect(() => {
     const createWallet = async () => {
       try {
-        // 1. Generate entropy & mnemonic
         const entropy = Random.getBytes(32);
         const mnemonic = Bip39.encode(entropy).toString();
 
-        // 2. Create wallet from mnemonic
         const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
-          prefix: "fetch", // or "fetch" depending on your chain
+          prefix: "fetch", 
         });
 
-        // 3. Get account address
         const [{ address }] = await wallet.getAccounts();
 
         setUserWallet(wallet);
@@ -51,7 +45,6 @@ const ChatAssistant = () => {
     createWallet();
   }, []);
 
-  // Effect to scroll to the latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -65,7 +58,6 @@ const ChatAssistant = () => {
     setIsLoading(true);
 
     try {
-      // 1. Define the message payload
       const message = {
         type: "ChatMessage",
         content: [
@@ -78,7 +70,6 @@ const ChatAssistant = () => {
         msg_id: crypto.randomUUID(),
       };
 
-      // 2. Prepare the envelope to be signed
       const envelope = {
         version: 1,
         sender: userAddress,
@@ -86,12 +77,11 @@ const ChatAssistant = () => {
         session: crypto.randomUUID(),
         protocol: "uagents.contrib.chat.Chat",
         payload: JSON.stringify(message),
-        expires: Math.floor(Date.now() / 1000) + 300, // Expires in 5 minutes
+        expires: Math.floor(Date.now() / 1000) + 300, 
       };
 
       const envelopeBytes = new TextEncoder().encode(JSON.stringify(envelope));
 
-      // 3. Sign the envelope
       const { signature } = await userWallet.signDirect(userAddress, {
         bodyBytes: envelopeBytes,
         authInfoBytes: new Uint8Array(),
@@ -99,7 +89,6 @@ const ChatAssistant = () => {
         accountNumber: 0,
       });
 
-      // 4. Send the signed message
       await fetch(`${AGENTVERSE_URL}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +99,6 @@ const ChatAssistant = () => {
         }),
       });
 
-      // 5. Poll for a response
       pollForResponse(userAddress);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -127,7 +115,7 @@ const ChatAssistant = () => {
 
   const pollForResponse = async (address) => {
     let attempts = 0;
-    const maxAttempts = 30; // Poll for 30 seconds
+    const maxAttempts = 30; 
 
     const intervalId = setInterval(async () => {
       try {
@@ -167,15 +155,13 @@ const ChatAssistant = () => {
         ]);
         setIsLoading(false);
       }
-    }, 1000); // Check every second
+    }, 1000); 
   };
 
   return (
     <>
-      {/* Conditionally render the chat window */}
       {isOpen && (
         <div className="fixed bottom-24 left-5 z-50 flex flex-col w-[400px] h-[600px] border border-white/20 rounded-2xl shadow-2xl bg-slate-900/50 backdrop-blur-md text-white overflow-hidden transition-all duration-300 ease-in-out transform opacity-100 translate-y-0">
-          {/* Message Area */}
           <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
             {messages.map((msg, index) => (
               <div
@@ -195,7 +181,6 @@ const ChatAssistant = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
           <div className="p-4 border-t border-white/20 flex items-center">
             <input
               type="text"
@@ -217,14 +202,12 @@ const ChatAssistant = () => {
         </div>
       )}
 
-      {/* NEW: Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-5 left-5 z-50 w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-700 transition-colors"
         aria-label="Toggle Chat"
       >
         {isOpen ? (
-          // Close Icon (X)
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-8 w-8"
@@ -240,7 +223,6 @@ const ChatAssistant = () => {
             />
           </svg>
         ) : (
-          // Chat Icon
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-8 w-8"
