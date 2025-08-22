@@ -5,6 +5,9 @@
 
 **LearnSphere** is a "learn-to-earn" decentralized application (dApp) designed to make education in Web3 accessible, engaging, and rewarding. It transforms the complex world of blockchain, the Internet Computer Protocol (ICP), and AI agents into a gamified adventure where users complete quests, earn rewards, and level up their skills.
 
+**Agent Address**
+test-agent://agent1qghztqzczs2ge47xz7xr3vduust7zagw4zfdefpeg74e253paquf6gwr0lu
+
 ---
 
 ## The Problem
