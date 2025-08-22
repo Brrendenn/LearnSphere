@@ -15,23 +15,18 @@ import re
 import asyncio
 import os
 
-# Agent configuration
 AGENT_NAME = "learnsphere_agent"
 AGENT_SEED = "learnsphereagentisthegoat"
 AGENT_MAILBOX_KEY = os.getenv("AGENT_MAILBOX_KEY")
 
-# ASI:One LLM configuration
 client = OpenAI(
-    # Using the ASI:One LLM endpoint and model
     base_url='https://api.asi1.ai/v1',
-    # You need to get an ASI:One API key from https://asi1.ai/dashboard/api-keys
     api_key=os.getenv("ASI_ONE_API_KEY", "<YOUR_API_KEY>"),
 )
 
-# Get the correct canister ID dynamically
 def get_canister_id(network="local"):
     """Dynamically get the canister ID."""
-    canister_name = "learnsphere"
+    canister_name = "learnsphere_backend"
     try:
         cmd = ["dfx", "canister", "id", canister_name]
         if network != "local":
@@ -49,7 +44,6 @@ def get_canister_id(network="local"):
 
 CANISTER_ID = get_canister_id()
 
-# Create the agent with mailbox enabled for chat
 agent = Agent(
     name=AGENT_NAME,
     seed=AGENT_SEED,
@@ -58,7 +52,6 @@ agent = Agent(
     publish_agent_details=True,
 )
 
-# Fund the agent with FET tokens if its balance is low
 fund_agent_if_low(agent.wallet.address())
 
 # === CANISTER INTERACTION FUNCTIONS ===
@@ -67,6 +60,7 @@ async def call_canister(method_name: str, args: str = "()"):
     """Calls a method on the Motoko canister."""
     try:
         cmd = ["dfx", "canister", "call", CANISTER_ID, method_name, args]
+        cmd.extend(["--identity", "default"])
         print(f"💻 Calling: {' '.join(cmd)}")
         
         process = await asyncio.create_subprocess_exec(
@@ -152,15 +146,12 @@ async def get_all_quests_context():
 
 # === CHAT PROTOCOL SETUP ===
 
-# Create a new protocol which is compatible with the chat protocol spec
 protocol = Protocol(spec=chat_protocol_spec)
 
-# Define the handler for chat messages sent to your agent
 @protocol.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     ctx.logger.info(f"💬 Received chat message from {sender}")
-    
-    # Send acknowledgement for receiving the message
+
     await ctx.send(
         sender,
         ChatAcknowledgement(
@@ -169,7 +160,6 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         ),
     )
 
-    # Collect all the text chunks from the message
     text = ''
     for item in msg.content:
         if isinstance(item, TextContent):
@@ -188,11 +178,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         ))
         return
 
-    # Get current quest context for the AI
     quest_context = await get_quest_context()
     all_quests_context = await get_all_quests_context()
 
-    # Query the ASI:One model with LearnSphere context
     response = 'I am afraid something went wrong and I am unable to answer your question at the moment'
     try:
         r = client.chat.completions.create(
@@ -237,7 +225,7 @@ If users ask about topics outside of blockchain, Web3, ICP, Fetch.ai, or learnin
                 },
                 {"role": "user", "content": text},
             ],
-            max_tokens=1024,  # Reduced for more concise responses
+            max_tokens=1024,  
         )
         response = str(r.choices[0].message.content)
         ctx.logger.info(f"🤖 AI response generated successfully")
@@ -245,25 +233,22 @@ If users ask about topics outside of blockchain, Web3, ICP, Fetch.ai, or learnin
         ctx.logger.exception(f'Error querying ASI:One model: {e}')
         response = "I'm having trouble connecting to my AI assistant right now. Please try asking about LearnSphere quests again in a moment!"
 
-    # Send the response back to the user - REMOVED EndSessionContent!
     await ctx.send(sender, ChatMessage(
         timestamp=datetime.utcnow(),
         msg_id=uuid4(),
         content=[
             TextContent(type="text", text=response),
-            # ✅ REMOVED: EndSessionContent - this keeps the session alive
         ]
     ))
     
 
 @protocol.on_message(ChatAcknowledgement)
 async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    # Log acknowledgements but don't need to act on them
     ctx.logger.info(f"✅ Message acknowledged by {sender}")
 
 # === PERIODIC QUEST MONITORING ===
 
-@agent.on_interval(period=300.0)  # Every 5 minutes
+@agent.on_interval(period=300.0) 
 async def quest_status_check(ctx: Context):
     """Periodically check and log quest status"""
     ctx.logger.info("🔍 Performing periodic quest check...")
@@ -291,13 +276,10 @@ async def startup(ctx: Context):
     ctx.logger.info(f"   🎯 Target Canister ID: {CANISTER_ID}")
     ctx.logger.info(f"   💬 Chat Protocol: Ready for messages")
     
-    # Wait a bit before first operations
     await asyncio.sleep(3.0)
     
-    # Perform initial quest check
     await quest_status_check(ctx)
 
-# Attach the chat protocol to the agent
 agent.include(protocol, publish_manifest=True)
 
 if __name__ == "__main__":
