@@ -9,8 +9,8 @@
 agent1qghztqzczs2ge47xz7xr3vduust7zagw4zfdefpeg74e253paquf6gwr0lu
 
 Bast's Descent :
-[Brrendenn](https://github.com/Brrendenn)
-[BayuAdnyanaa](https://github.com/BayuAdnyanaa)
+- [Brrendenn](https://github.com/Brrendenn)
+- [BayuAdnyanaa](https://github.com/BayuAdnyanaa)
 
 ---
 
